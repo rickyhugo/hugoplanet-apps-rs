@@ -1,12 +1,28 @@
 use btleplug::{
-    api::{Central, CentralEvent, Manager as _, Peripheral, ScanFilter, bleuuid::BleUuid},
+    api::{Central, CentralEvent, Manager as _, ScanFilter, bleuuid::uuid_from_u16},
     platform::{Adapter, Manager},
 };
 use futures::stream::StreamExt;
 use std::error::Error;
+use uuid::Uuid;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
+}
+
+const BTHOME_ID: Uuid = uuid_from_u16(0xFCD2);
+
+fn decode_bthome(payload: &[u8]) {
+    if payload.is_empty() {
+        return;
+    }
+
+    // If you are using a library like 'btsensor':
+    // let result = btsensor::bthome::parse_v2(payload);
+
+    // If doing it manually (e.g., viewing the raw array):
+    let device_info_byte = payload[0];
+    println!("Device Info Byte: {:#04X}", device_info_byte);
 }
 
 async fn get_central(manager: &Manager) -> Adapter {
@@ -20,55 +36,19 @@ pub async fn log_devices() -> Result<(), Box<dyn Error>> {
     let central_state = central.adapter_state().await.unwrap();
     println!("CentralState: {:?}", central_state);
 
-    // Each adapter has an event stream, we fetch via events(),
-    // simplifying the type, this will return what is essentially a
-    // Future<Result<Stream<Item=CentralEvent>>>.
     let mut events = central.events().await?;
 
     // start scanning for devices
     central.start_scan(ScanFilter::default()).await?;
-
-    // Print based on whatever the event receiver outputs. Note that the event
-    // receiver blocks, so in a real program, this should be run in its own
-    // thread (not task, as this library does not yet use async channels).
     while let Some(event) = events.next().await {
-        match event {
-            CentralEvent::DeviceDiscovered(id) => {
-                let peripheral = central.peripheral(&id).await?;
-                let properties = peripheral.properties().await?;
-                let name = properties
-                    .and_then(|p| p.local_name)
-                    .map(|local_name| format!("Name: {local_name}"))
-                    .unwrap_or_default();
-                println!("DeviceDiscovered: {:?} {}", id, name);
-            }
-            CentralEvent::StateUpdate(state) => {
-                println!("AdapterStatusUpdate {:?}", state);
-            }
-            CentralEvent::DeviceConnected(id) => {
-                println!("DeviceConnected: {:?}", id);
-            }
-            CentralEvent::DeviceDisconnected(id) => {
-                println!("DeviceDisconnected: {:?}", id);
-            }
-            CentralEvent::ManufacturerDataAdvertisement {
-                id,
-                manufacturer_data,
-            } => {
-                println!(
-                    "ManufacturerDataAdvertisement: {:?}, {:?}",
-                    id, manufacturer_data
-                );
-            }
-            CentralEvent::ServiceDataAdvertisement { id, service_data } => {
-                println!("ServiceDataAdvertisement: {:?}, {:?}", id, service_data);
-            }
-            CentralEvent::ServicesAdvertisement { id, services } => {
-                let services: Vec<String> =
-                    services.into_iter().map(|s| s.to_short_string()).collect();
-                println!("ServicesAdvertisement: {:?}, {:?}", id, services);
-            }
-            _ => {}
+        if let CentralEvent::ServiceDataAdvertisement { id, service_data } = event
+            && let Some(payload) = service_data.get(&BTHOME_ID)
+        {
+            println!("--- Received BTHome Packet ---");
+            println!("Peripheral ID: {:?}", id);
+            println!("Raw Payload (Hex): {:02X?}", payload);
+
+            decode_bthome(payload);
         }
     }
 
