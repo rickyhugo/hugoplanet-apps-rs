@@ -6,3 +6,6 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+hp-shelly-blu = { workspace = true }
+
+tokio = { version = "1.52.3", features = ["full"] }
