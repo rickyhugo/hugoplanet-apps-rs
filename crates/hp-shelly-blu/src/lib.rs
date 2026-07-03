@@ -2,12 +2,33 @@ use btleplug::{
     api::{Central, CentralEvent, Manager as _, ScanFilter, bleuuid::uuid_from_u16},
     platform::{Adapter, Manager},
 };
+use btsensor::bthome::v2::{BtHomeV2, Element};
 use futures::stream::StreamExt;
 use std::error::Error;
 use uuid::Uuid;
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+fn handle_ble_payload(service_data: &[u8]) {
+    match BtHomeV2::decode(service_data) {
+        Ok(payload) => {
+            println!(
+                "Decoded BTHome v2 payload. Encrypted: {}",
+                payload.encrypted
+            );
+
+            for element in payload.elements {
+                match element {
+                    Element::Temperature(temp) => println!("Temperature: {}°C", temp),
+                    Element::Humidity(humidity) => println!("Humidity: {}%", humidity),
+                    Element::Battery(bat) => println!("Battery: {}%", bat),
+                    // ... other sensor elements ...
+                    _ => {}
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to parse BTHome v2 data: {:?}", e);
+        }
+    }
 }
 
 const BTHOME_ID: Uuid = uuid_from_u16(0xFCD2);
@@ -16,13 +37,7 @@ fn decode_bthome(payload: &[u8]) {
     if payload.is_empty() {
         return;
     }
-
-    // If you are using a library like 'btsensor':
-    // let result = btsensor::bthome::parse_v2(payload);
-
-    // If doing it manually (e.g., viewing the raw array):
-    let device_info_byte = payload[0];
-    println!("Device Info Byte: {:#04X}", device_info_byte);
+    handle_ble_payload(payload);
 }
 
 async fn get_central(manager: &Manager) -> Adapter {
@@ -53,6 +68,10 @@ pub async fn log_devices() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+pub fn add(left: u64, right: u64) -> u64 {
+    left + right
 }
 
 #[cfg(test)]

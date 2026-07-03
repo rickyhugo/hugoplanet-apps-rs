@@ -13,3 +13,6 @@ license = "MIT"
 
 [workspace.dependencies]
 hp-shelly-blu = { version = "0.1.0", path = "crates/hp-shelly-blu" }
+
+thiserror = "2"
+anyhow = "1"
