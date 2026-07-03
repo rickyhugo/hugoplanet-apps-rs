@@ -1,44 +1,19 @@
+pub mod bthome;
+
 use btleplug::{
-    api::{Central, CentralEvent, Manager as _, ScanFilter, bleuuid::uuid_from_u16},
+    api::{
+        Central, CentralEvent, Manager as _, Peripheral as _, ScanFilter, bleuuid::uuid_from_u16,
+    },
     platform::{Adapter, Manager},
 };
-use btsensor::bthome::v2::{BtHomeV2, Element};
 use futures::stream::StreamExt;
 use std::error::Error;
 use uuid::Uuid;
 
-fn handle_ble_payload(service_data: &[u8]) {
-    match BtHomeV2::decode(service_data) {
-        Ok(payload) => {
-            println!(
-                "Decoded BTHome v2 payload. Encrypted: {}",
-                payload.encrypted
-            );
-
-            for element in payload.elements {
-                match element {
-                    Element::Temperature(temp) => println!("Temperature: {}°C", temp),
-                    Element::Humidity(humidity) => println!("Humidity: {}%", humidity),
-                    Element::Battery(bat) => println!("Battery: {}%", bat),
-                    // ... other sensor elements ...
-                    _ => {}
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to parse BTHome v2 data: {:?}", e);
-        }
-    }
-}
+use crate::bthome::Measurement;
+use crate::bthome::decode;
 
 const BTHOME_ID: Uuid = uuid_from_u16(0xFCD2);
-
-fn decode_bthome(payload: &[u8]) {
-    if payload.is_empty() {
-        return;
-    }
-    handle_ble_payload(payload);
-}
 
 async fn get_central(manager: &Manager) -> Adapter {
     let adapters = manager.adapters().await.unwrap();
@@ -48,22 +23,35 @@ async fn get_central(manager: &Manager) -> Adapter {
 pub async fn log_devices() -> Result<(), Box<dyn Error>> {
     let manager = Manager::new().await.unwrap();
     let central = get_central(&manager).await;
-    let central_state = central.adapter_state().await.unwrap();
-    println!("CentralState: {:?}", central_state);
+    println!("CentralState: {:?}", central.adapter_state().await.unwrap());
 
     let mut events = central.events().await?;
-
-    // start scanning for devices
     central.start_scan(ScanFilter::default()).await?;
+
     while let Some(event) = events.next().await {
         if let CentralEvent::ServiceDataAdvertisement { id, service_data } = event
             && let Some(payload) = service_data.get(&BTHOME_ID)
         {
-            println!("--- Received BTHome Packet ---");
-            println!("Peripheral ID: {:?}", id);
-            println!("Raw Payload (Hex): {:02X?}", payload);
+            let mac = match central.peripheral(&id).await {
+                Ok(p) => p.address().to_string(),
+                Err(_) => id.to_string(),
+            };
+            println!("mac: {mac} hex: {:02X?}", payload);
 
-            decode_bthome(payload);
+            if let Ok(packet) = decode(payload) {
+                for m in packet.measurements {
+                    match m {
+                        Measurement::Temperature(v) | Measurement::TemperatureSmall(v) => {
+                            println!("  temperature: {v}")
+                        }
+                        Measurement::Humidity(v) => println!("  humidity: {v}"),
+                        Measurement::HumidityShort(v) => println!("  humidity: {v}"),
+                        Measurement::Battery(v) => println!("  battery: {v}%"),
+                        Measurement::BatteryVoltage(v) => println!("  battery_voltage: {v}V"),
+                        _ => println!("  {:?}", m),
+                    }
+                }
+            }
         }
     }
 
