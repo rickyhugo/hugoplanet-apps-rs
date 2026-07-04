@@ -47,7 +47,6 @@ pub async fn log_devices() -> Result<(), Box<dyn Error>> {
                         Measurement::Humidity(v) => println!("  humidity: {v}"),
                         Measurement::HumidityShort(v) => println!("  humidity: {v}"),
                         Measurement::Battery(v) => println!("  battery: {v}%"),
-                        Measurement::BatteryVoltage(v) => println!("  battery_voltage: {v}V"),
                         _ => println!("  {:?}", m),
                     }
                 }

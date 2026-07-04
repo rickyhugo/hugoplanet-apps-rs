@@ -38,7 +38,6 @@ pub enum Measurement {
     TotalVolatileOrganicCompounds(u16),
     Moisture(f64),
     MoistureShort(u8),
-    BatteryVoltage(f64),
     BatteryLow(bool),
     BatteryCharging(bool),
     Gas(f64),
@@ -49,9 +48,6 @@ pub enum Measurement {
     Button { press_count: u8 },
     Dimmer { direction: u8, steps: u8 },
     Irradiance(f64),
-    Formaldehyde(u16),
-    RadonConcentration(u16),
-    Pm1_0(u16),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -182,18 +178,6 @@ fn parse_element(id: u8, data: &[u8]) -> Result<(Measurement, usize), DecodeErro
             let (v, n) = read_u16(data)?;
             Ok((Measurement::Pm10(v), n))
         }
-        0x0F => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x10 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x11 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
         0x12 => {
             let (v, n) = read_u16(data)?;
             Ok((Measurement::CarbonDioxide(v), n))
@@ -215,95 +199,7 @@ fn parse_element(id: u8, data: &[u8]) -> Result<(Measurement, usize), DecodeErro
             Ok((Measurement::BatteryCharging(v != 0), n))
         }
 
-        0x17 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x18 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x19 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x1A => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x1B => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x1C => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x1D => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x1E => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x1F => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x20 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x21 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x22 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x23 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x24 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x25 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x26 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x27 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x28 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x29 => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x2A => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x2B => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x2C => {
-            let (v, n) = read_u8(data)?;
-            Ok((Measurement::Bool(v != 0), n))
-        }
-        0x2D => {
+        0x0F..=0x11 | 0x17..=0x2D => {
             let (v, n) = read_u8(data)?;
             Ok((Measurement::Bool(v != 0), n))
         }
@@ -768,12 +664,6 @@ mod tests {
         let data = [0x40, 0x46, 0x2C];
         let packet = decode(&data).unwrap();
         assert_eq!(packet.measurements, vec![Measurement::Irradiance(4.4)]);
-    }
-
-    #[test]
-    fn test_formaldehyde() {
-        // Not directly in btsensor, but 0x53 is sometimes used
-        // Test with a quick pass on what we support
     }
 
     #[test]
