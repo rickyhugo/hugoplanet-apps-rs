@@ -8,6 +8,6 @@ license.workspace = true
 [dependencies]
 thiserror = { workspace = true }
 
-btleplug = "0.12.0"
-futures = "0.3.32"
-uuid = "1.23.3"
+btleplug = "0.12"
+futures = "0.3"
+uuid = "1"

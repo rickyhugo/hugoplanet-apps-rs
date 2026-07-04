@@ -7,6 +7,8 @@ license.workspace = true
 
 [dependencies]
 hp-shelly-blu = { workspace = true }
+hp-shelly-mqtt = { workspace = true }
+
 anyhow = { workspace = true }
 
-tokio = { version = "1.52.3", features = ["full"] }
+tokio = { version = "1", features = ["macros", "rt"] }
